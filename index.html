@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reading Planner</title>
+    <title>Reading Planner · enhanced</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -20,167 +20,264 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
+        // ----- custom icons (lucide‑like, all inline) -----
         const Icons = {
             BookOpen: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
             CheckCircle: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
             Calendar: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
             Share2: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>,
             Check: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
-            PlayCircle: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            PlayCircle: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>,
+            // additional icons needed from the revision
+            HelpCircle: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+            X: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            Hash: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,
+            AlertCircle: ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor" stroke="none"/></svg>,
         };
 
         function App() {
             const [copySuccess, setCopySuccess] = useState(false);
             const [error, setError] = useState("");
-            
-            const [draftConfig, setDraftConfig] = useState(() => {
-                const saved = localStorage.getItem('Reading_planner_v8');
+            const [showManual, setShowManual] = useState(false);
+            const [mode, setMode] = useState('date'); // 'date' or 'days'
+
+            // ----- load initial config from URL or localStorage -----
+            const getInitialConfig = () => {
+                const params = new URLSearchParams(window.location.search);
+                const saved = localStorage.getItem('reading_planner_config_v9'); // fresh key
                 const today = new Date().toISOString().split('T')[0];
                 const defaultEnd = new Date(); defaultEnd.setDate(defaultEnd.getDate() + 30);
-                return saved ? JSON.parse(saved) : { mode: 'dates', totalPages: 604, startPage: 1, endPage: 604, startDate: today, targetDate: defaultEnd.toISOString().split('T')[0], durationDays: 30 };
-            });
+                const endStr = defaultEnd.toISOString().split('T')[0];
 
+                if (params.get('p')) {
+                    return {
+                        totalPages: parseInt(params.get('p')) || 604,
+                        startPage: parseInt(params.get('start')) || 1,
+                        endPage: parseInt(params.get('end')) || 604,
+                        startDate: params.get('sd') || today,
+                        targetDate: params.get('d') || endStr,
+                        daysCount: parseInt(params.get('dc')) || 30
+                    };
+                }
+                return saved ? JSON.parse(saved) : {
+                    totalPages: 604,
+                    startPage: 1,
+                    endPage: 604,
+                    startDate: today,
+                    targetDate: endStr,
+                    daysCount: 30
+                };
+            };
+
+            const [draftConfig, setDraftConfig] = useState(getInitialConfig);
             const [activeConfig, setActiveConfig] = useState(draftConfig);
             const [completedDays, setCompletedDays] = useState(() => {
-                const saved = localStorage.getItem('Reading_progress_v8');
+                const saved = localStorage.getItem('reading_planner_progress_v9');
                 return saved ? JSON.parse(saved) : {};
             });
 
-            useEffect(() => { localStorage.setItem('Reading_planner_v8', JSON.stringify(activeConfig)); }, [activeConfig]);
-            useEffect(() => { localStorage.setItem('Reading_progress_v8', JSON.stringify(completedDays)); }, [completedDays]);
+            useEffect(() => {
+                localStorage.setItem('reading_planner_config_v9', JSON.stringify(activeConfig));
+            }, [activeConfig]);
 
-            // Helper to handle input change without forcing 0
-            const handleInputChange = (field, val) => {
-                setDraftConfig(prev => ({
-                    ...prev,
-                    [field]: val === "" ? "" : parseInt(val)
-                }));
+            useEffect(() => {
+                localStorage.setItem('reading_planner_progress_v9', JSON.stringify(completedDays));
+            }, [completedDays]);
+
+            // unified input handler (works for number and date fields)
+            const handleInput = (e) => {
+                const { name, value } = e.target;
+                const val = name.includes('Date') ? value : (value === '' ? '' : parseInt(value));
+                setDraftConfig(prev => ({ ...prev, [name]: val }));
             };
 
             const handleCalculate = () => {
                 setError("");
-                const total = parseInt(draftConfig.totalPages) || 0;
-                const dur = parseInt(draftConfig.durationDays) || 0;
+                const sDate = new Date(draftConfig.startDate);
+                const eDate = new Date(draftConfig.targetDate);
+                sDate.setHours(0,0,0,0);
+                eDate.setHours(0,0,0,0);
 
-                if (total <= 0) { setError("Total pages must be 1+"); return; }
-                if (draftConfig.mode === 'dates' && new Date(draftConfig.targetDate) <= new Date(draftConfig.startDate)) { setError("End date must be after start"); return; }
-                if (draftConfig.mode === 'duration' && dur <= 0) { setError("Duration must be 1+ days"); return; }
-                
-                // Clean up any empty strings before setting active
-                const cleaned = {
-                    ...draftConfig,
-                    totalPages: parseInt(draftConfig.totalPages) || 0,
-                    startPage: parseInt(draftConfig.startPage) || 0,
-                    endPage: parseInt(draftConfig.endPage) || 0,
-                    durationDays: parseInt(draftConfig.durationDays) || 0
-                };
-                setActiveConfig(cleaned);
+                if (draftConfig.totalPages <= 0) { setError("Total pages must be at least 1."); return; }
+                if (draftConfig.startPage <= 0 || draftConfig.startPage > draftConfig.totalPages) { setError(`Start page invalid.`); return; }
+                if (draftConfig.endPage <= 0 || draftConfig.endPage > draftConfig.totalPages) { setError(`End page invalid.`); return; }
+                if (mode === 'date' && eDate <= sDate) { setError("End date must be after start date."); return; }
+                if (mode === 'days' && draftConfig.daysCount <= 0) { setError("Days count must be at least 1."); return; }
+
+                setActiveConfig(draftConfig);
             };
 
+            // generate schedule
             const scheduleData = useMemo(() => {
-                let diffDays = activeConfig.mode === 'dates' ? 
-                    Math.max(1, Math.ceil((new Date(activeConfig.targetDate) - new Date(activeConfig.startDate)) / (1000 * 60 * 60 * 24))) : 
-                    activeConfig.durationDays;
-                
+                const startD = new Date(activeConfig.startDate);
+                startD.setHours(0,0,0,0);
+
+                let diffDays = 0;
+                if (mode === 'date') {
+                    const endD = new Date(activeConfig.targetDate);
+                    endD.setHours(0,0,0,0);
+                    const diffTime = endD.getTime() - startD.getTime();
+                    diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+                } else {
+                    diffDays = activeConfig.daysCount;
+                }
+
+                const totalMushaf = activeConfig.totalPages;
                 const sPage = activeConfig.startPage;
                 const ePage = activeConfig.endPage;
-                const totalPg = activeConfig.totalPages;
-                let pagesToRead = (ePage >= sPage) ? (ePage - sPage + 1) : (totalPg - sPage + 1 + ePage);
+                let pagesToRead = (ePage >= sPage) ? (ePage - sPage + 1) : (totalMushaf - sPage + 1 + ePage);
                 const rate = pagesToRead / diffDays;
-                
+
                 const list = [];
                 for (let i = 1; i <= diffDays; i++) {
+                    const dateLabel = new Date(startD);
+                    dateLabel.setDate(startD.getDate() + i);
                     const pageOffset = Math.round(rate * i) - 1;
-                    const targetPage = ((sPage + pageOffset - 1) % totalPg) + 1;
-                    if (activeConfig.mode === 'dates') {
-                        const d = new Date(activeConfig.startDate); d.setDate(d.getDate() + i);
-                        list.push({ id: d.toISOString().split('T')[0], label: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }), sub: d.toLocaleDateString('en-US', { weekday: 'short' }), target: targetPage });
-                    } else {
-                        list.push({ id: `day-${i}`, label: i, sub: 'DAY', target: targetPage });
-                    }
+                    let targetPage = ((sPage + pageOffset - 1) % totalMushaf) + 1;
+                    list.push({
+                        id: dateLabel.toISOString().split('T')[0] + '-' + i,
+                        sub: dateLabel.toLocaleDateString('en-US', { weekday: 'short' }),
+                        label: `Day ${i}`,
+                        date: dateLabel.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                        target: targetPage
+                    });
                 }
-                return { list, days: diffDays, rate };
-            }, [activeConfig]);
+                return { list, days: diffDays, rate, totalTarget: pagesToRead };
+            }, [activeConfig, mode]);
 
-            const isDirty = JSON.stringify(draftConfig) !== JSON.stringify(activeConfig);
+            const handleShare = () => {
+                const url = `${window.location.origin}${window.location.pathname}?p=${activeConfig.totalPages}&start=${activeConfig.startPage}&end=${activeConfig.endPage}&sd=${activeConfig.startDate}&d=${activeConfig.targetDate}&dc=${activeConfig.daysCount}`;
+                const textArea = document.createElement("textarea");
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            };
+
             const progress = Math.round((Object.values(completedDays).filter(Boolean).length / scheduleData.days) * 100) || 0;
+            const isDirty = JSON.stringify(draftConfig) !== JSON.stringify(activeConfig);
 
             return (
-                <div className="min-h-screen bg-slate-50 p-4 pb-10">
+                <div className="min-h-screen bg-slate-50 text-slate-900 p-4 font-sans touch-manipulation">
                     <div className="max-w-md mx-auto">
-                        <header className="flex flex-col items-center mb-6">
-                            <div className="bg-emerald-600 p-2.5 rounded-xl mb-2 text-white shadow-lg"><Icons.BookOpen /></div>
+                        {/* Header */}
+                        <header className="flex flex-col items-center mb-6 relative">
+                            <button onClick={() => setShowManual(true)} className="absolute right-0 top-0 p-2 text-slate-400 hover:text-emerald-600 transition-colors">
+                                <Icons.HelpCircle className="w-6 h-6" />
+                            </button>
+                            <div className="bg-emerald-600 p-2.5 rounded-xl mb-2 shadow-lg shadow-emerald-100">
+                                <Icons.BookOpen />
+                            </div>
                             <h1 className="text-2xl font-black text-slate-800 tracking-tight text-center">Reading Planner</h1>
                         </header>
 
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-4">
+                        {/* Input Card */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-4 relative overflow-hidden">
                             <div className="flex justify-between items-center mb-5">
                                 <div className="flex bg-slate-100 p-1 rounded-lg">
-                                    {['dates', 'duration'].map(m => (
-                                        <button key={m} onClick={() => setDraftConfig(p => ({...p, mode: m}))} className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all ${draftConfig.mode === m ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}>
-                                            {m === 'dates' ? 'Date Range' : 'Days Count'}
-                                        </button>
-                                    ))}
+                                    <button onClick={() => setMode('date')} className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${mode === 'date' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-400'}`}>DATE RANGE</button>
+                                    <button onClick={() => setMode('days')} className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${mode === 'days' ? 'bg-white shadow-sm text-emerald-700' : 'text-slate-400'}`}>DAYS COUNT</button>
                                 </div>
-                                <button onClick={() => {
-                                    const url = window.location.href;
-                                    const el = document.createElement('textarea'); el.value = url; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-                                    setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000);
-                                }} className="text-[10px] font-bold px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-2">
-                                    {copySuccess ? <Icons.Check className="w-3 text-emerald-600" /> : <Icons.Share2 className="w-3 text-slate-400" />} {copySuccess ? 'COPIED' : 'SHARE'}
+                                <button onClick={handleShare} className="text-[10px] font-bold px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-2">
+                                    {copySuccess ? <Icons.Check className="w-3.5 h-3.5 text-emerald-600" /> : <Icons.Share2 className="w-3.5 h-3.5 text-slate-400" />}
+                                    {copySuccess ? 'COPIED' : 'SHARE'}
                                 </button>
                             </div>
-                            
+
                             <div className="space-y-4">
-                                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Pages</label><input type="number" value={draftConfig.totalPages} onChange={e => handleInputChange('totalPages', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start Page</label><input type="number" value={draftConfig.startPage} onChange={e => handleInputChange('startPage', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Page</label><input type="number" value={draftConfig.endPage} onChange={e => handleInputChange('endPage', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                {/* total pages */}
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-wider">Total Pages in Book</label>
+                                    <input type="number" name="totalPages" value={draftConfig.totalPages} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
                                 </div>
-                                {draftConfig.mode === 'dates' ? (
+                                {/* start / end page */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-wider">Start Page</label>
+                                        <input type="number" name="startPage" value={draftConfig.startPage} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-wider">End Page</label>
+                                        <input type="number" name="endPage" value={draftConfig.endPage} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                    </div>
+                                </div>
+
+                                {/* date or days input */}
+                                {mode === 'date' ? (
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start Date</label><input type="date" value={draftConfig.startDate} onChange={e => setDraftConfig(p => ({...p, startDate: e.target.value}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-[11px] font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Date</label><input type="date" value={draftConfig.targetDate} onChange={e => setDraftConfig(p => ({...p, targetDate: e.target.value}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-[11px] font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Start Date</label>
+                                            <input type="date" name="startDate" value={draftConfig.startDate} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">End Date</label>
+                                            <input type="date" name="targetDate" value={draftConfig.targetDate} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Number of Days</label><input type="number" value={draftConfig.durationDays} onChange={e => handleInputChange('durationDays', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">How many days?</label>
+                                        <input type="number" name="daysCount" value={draftConfig.daysCount} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                                    </div>
                                 )}
-                                {error && <div className="text-red-600 text-[10px] font-bold bg-red-50 p-3 rounded-xl border border-red-100">{error}</div>}
-                                <button onClick={handleCalculate} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${isDirty ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-default'}`}>
-                                    {isDirty ? <Icons.PlayCircle className="w-4 h-4" /> : <Icons.Check className="w-4 h-4" />} {isDirty ? "Apply Schedule" : "Schedule Active"}
+
+                                {error && (
+                                    <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 border border-red-100">
+                                        <Icons.AlertCircle className="w-4 h-4 flex-shrink-0" />
+                                        <p className="text-[10px] font-bold leading-tight">{error}</p>
+                                    </div>
+                                )}
+
+                                <button onClick={handleCalculate} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${isDirty ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 hover:bg-emerald-700 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-default'}`}>
+                                    {isDirty ? <Icons.PlayCircle className="w-4 h-4" /> : <Icons.Check className="w-4 h-4" />}
+                                    {isDirty ? "Apply Schedule" : "Schedule Active"}
                                 </button>
                             </div>
                         </div>
 
+                        {/* Dashboard */}
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="bg-emerald-600 text-white p-5 rounded-3xl shadow-lg shadow-emerald-100">
-                                <p className="text-[9px] uppercase font-black opacity-80 tracking-widest">Daily Goal</p>
+                                <p className="text-[9px] uppercase font-black opacity-80 mb-1 tracking-wider">Daily Goal</p>
                                 <p className="text-3xl font-black">{scheduleData.rate.toFixed(1)}</p>
-                                <p className="text-[9px] font-bold opacity-60 mt-1 uppercase tracking-widest">{scheduleData.days} Days</p>
+                                <p className="text-[9px] font-bold opacity-60 mt-1 uppercase">Pages per day</p>
                             </div>
                             <div className="bg-white border border-slate-200 p-5 rounded-3xl flex flex-col justify-between">
-                                <p className="text-[9px] uppercase font-black text-slate-400 tracking-widest">Completion</p>
+                                <p className="text-[9px] uppercase font-black text-slate-400 mb-1 tracking-wider">Completion</p>
                                 <div>
                                     <p className="text-2xl font-black text-slate-800">{progress}%</p>
-                                    <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden"><div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
+                                    <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                                        <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${progress}%` }}></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Daily Breakdown */}
                         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-                            <div className="p-4 bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                <Icons.Calendar className="w-4 h-4 text-emerald-600" /> Daily Breakdown
+                            <div className="p-4 bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <Icons.Hash className="w-4 h-4 text-emerald-600" /> Daily Breakdown
+                                </div>
                             </div>
-                            <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+                            <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
                                 {scheduleData.list.map(item => (
                                     <div key={item.id} onClick={() => setCompletedDays(prev => ({ ...prev, [item.id]: !prev[item.id] }))} className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${completedDays[item.id] ? 'bg-emerald-50/40' : 'hover:bg-slate-50'}`}>
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-[10px] font-black ${completedDays[item.id] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                                                 <span className="opacity-60 uppercase">{item.sub}</span>
-                                                <span className="text-sm">{item.label}</span>
+                                                <span className="text-sm">{item.label.split(' ')[1]}</span>
                                             </div>
                                             <div>
-                                                <p className={`text-lg font-black ${completedDays[item.id] ? 'text-slate-300 line-through' : 'text-emerald-700'}`}>Page {item.target}</p>
+                                                <p className={`text-[10px] font-black uppercase tracking-tight ${completedDays[item.id] ? 'text-slate-300' : 'text-slate-400'}`}>
+                                                    Target {item.date}
+                                                </p>
+                                                <p className={`text-lg font-black leading-none ${completedDays[item.id] ? 'text-slate-300 line-through' : 'text-emerald-700'}`}>
+                                                    Page {item.target}
+                                                </p>
                                             </div>
                                         </div>
                                         {completedDays[item.id] ? <Icons.CheckCircle className="text-emerald-500 w-7 h-7" /> : <div className="w-7 h-7 border-2 border-slate-100 rounded-full"></div>}
@@ -188,10 +285,47 @@
                                 ))}
                             </div>
                         </div>
+
+                        {/* Manual Modal */}
+                        {showManual && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                                <div className="bg-white w-full max-w-lg max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+                                    <div className="p-5 border-b flex justify-between items-center bg-slate-50">
+                                        <h2 className="font-black text-slate-800 flex items-center gap-2 uppercase text-sm tracking-widest">
+                                            <Icons.BookOpen className="w-5 h-5 text-emerald-600" /> User Manual
+                                        </h2>
+                                        <button onClick={() => setShowManual(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                            <Icons.X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                    <div className="p-6 overflow-y-auto text-sm text-slate-600 space-y-6 custom-scrollbar">
+                                        <section>
+                                            <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-2 flex items-center gap-2"><span className="w-5 h-5 bg-emerald-100 text-emerald-700 rounded flex items-center justify-center">1</span>Planning Mode</h3>
+                                            <p>Switch between <strong>Date Range</strong> (specific deadline) and <strong>Days Count</strong> (fixed pace) at the top.</p>
+                                        </section>
+                                        <section>
+                                            <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-2 flex items-center gap-2"><span className="w-5 h-5 bg-emerald-100 text-emerald-700 rounded flex items-center justify-center">2</span>Enter Details</h3>
+                                            <p>Fill in Total Pages, your current Start Page, and your Target End Page. Set your timing.</p>
+                                        </section>
+                                        <section>
+                                            <h3 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-2 flex items-center gap-2"><span className="w-5 h-5 bg-emerald-100 text-emerald-700 rounded flex items-center justify-center">3</span>Generate & Track</h3>
+                                            <p>Click <strong>Apply Schedule</strong>. Dashboard updates. Tap rows to check off days.</p>
+                                        </section>
+                                        <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                                            <p className="text-[11px] font-bold text-amber-700 leading-relaxed"><strong>Wrapping:</strong> If "End Page" is lower than "Start Page", the plan cycles through the book.</p>
+                                        </div>
+                                    </div>
+                                    <div className="p-5 bg-slate-50 border-t">
+                                        <button onClick={() => setShowManual(false)} className="w-full py-3 bg-emerald-600 text-white font-black text-xs uppercase tracking-widest rounded-xl">Got it</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
         }
+
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
