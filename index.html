@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quran Khatam Planner</title>
+    <title>Reading Planner</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & Babel for Browser Rendering -->
@@ -59,7 +59,7 @@
             
             const [draftConfig, setDraftConfig] = useState(() => {
                 const params = new URLSearchParams(window.location.search);
-                const saved = localStorage.getItem('quran_planner_config_v5');
+                const saved = localStorage.getItem('Reading_planner_config_v5');
                 const today = new Date().toISOString().split('T')[0];
                 const defaultEnd = new Date();
                 defaultEnd.setDate(defaultEnd.getDate() + 30);
@@ -81,16 +81,16 @@
 
             const [activeConfig, setActiveConfig] = useState(draftConfig);
             const [completedDays, setCompletedDays] = useState(() => {
-                const saved = localStorage.getItem('quran_planner_progress_v5');
+                const saved = localStorage.getItem('Reading_planner_progress_v5');
                 return saved ? JSON.parse(saved) : {};
             });
 
             useEffect(() => {
-                localStorage.setItem('quran_planner_config_v5', JSON.stringify(activeConfig));
+                localStorage.setItem('Reading_planner_config_v5', JSON.stringify(activeConfig));
             }, [activeConfig]);
 
             useEffect(() => {
-                localStorage.setItem('quran_planner_progress_v5', JSON.stringify(completedDays));
+                localStorage.setItem('Reading_planner_progress_v5', JSON.stringify(completedDays));
             }, [completedDays]);
 
             const handleCalculate = () => {
