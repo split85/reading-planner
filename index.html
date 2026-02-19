@@ -49,12 +49,32 @@
             useEffect(() => { localStorage.setItem('Reading_planner_v8', JSON.stringify(activeConfig)); }, [activeConfig]);
             useEffect(() => { localStorage.setItem('Reading_progress_v8', JSON.stringify(completedDays)); }, [completedDays]);
 
+            // Helper to handle input change without forcing 0
+            const handleInputChange = (field, val) => {
+                setDraftConfig(prev => ({
+                    ...prev,
+                    [field]: val === "" ? "" : parseInt(val)
+                }));
+            };
+
             const handleCalculate = () => {
                 setError("");
-                if (draftConfig.totalPages <= 0) { setError("Total pages must be 1+"); return; }
+                const total = parseInt(draftConfig.totalPages) || 0;
+                const dur = parseInt(draftConfig.durationDays) || 0;
+
+                if (total <= 0) { setError("Total pages must be 1+"); return; }
                 if (draftConfig.mode === 'dates' && new Date(draftConfig.targetDate) <= new Date(draftConfig.startDate)) { setError("End date must be after start"); return; }
-                if (draftConfig.mode === 'duration' && draftConfig.durationDays <= 0) { setError("Duration must be 1+ days"); return; }
-                setActiveConfig(draftConfig);
+                if (draftConfig.mode === 'duration' && dur <= 0) { setError("Duration must be 1+ days"); return; }
+                
+                // Clean up any empty strings before setting active
+                const cleaned = {
+                    ...draftConfig,
+                    totalPages: parseInt(draftConfig.totalPages) || 0,
+                    startPage: parseInt(draftConfig.startPage) || 0,
+                    endPage: parseInt(draftConfig.endPage) || 0,
+                    durationDays: parseInt(draftConfig.durationDays) || 0
+                };
+                setActiveConfig(cleaned);
             };
 
             const scheduleData = useMemo(() => {
@@ -112,10 +132,10 @@
                             </div>
                             
                             <div className="space-y-4">
-                                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Pages</label><input type="number" value={draftConfig.totalPages} onChange={e => setDraftConfig(p => ({...p, totalPages: parseInt(e.target.value)||0}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Pages</label><input type="number" value={draftConfig.totalPages} onChange={e => handleInputChange('totalPages', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start Page</label><input type="number" value={draftConfig.startPage} onChange={e => setDraftConfig(p => ({...p, startPage: parseInt(e.target.value)||0}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Page</label><input type="number" value={draftConfig.endPage} onChange={e => setDraftConfig(p => ({...p, endPage: parseInt(e.target.value)||0}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Start Page</label><input type="number" value={draftConfig.startPage} onChange={e => handleInputChange('startPage', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Page</label><input type="number" value={draftConfig.endPage} onChange={e => handleInputChange('endPage', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
                                 </div>
                                 {draftConfig.mode === 'dates' ? (
                                     <div className="grid grid-cols-2 gap-4">
@@ -123,7 +143,7 @@
                                         <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">End Date</label><input type="date" value={draftConfig.targetDate} onChange={e => setDraftConfig(p => ({...p, targetDate: e.target.value}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-[11px] font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
                                     </div>
                                 ) : (
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Number of Days</label><input type="number" value={draftConfig.durationDays} onChange={e => setDraftConfig(p => ({...p, durationDays: parseInt(e.target.value)||0}))} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Number of Days</label><input type="number" value={draftConfig.durationDays} onChange={e => handleInputChange('durationDays', e.target.value)} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold w-full mt-1 outline-none focus:ring-2 focus:ring-emerald-500/20" /></div>
                                 )}
                                 {error && <div className="text-red-600 text-[10px] font-bold bg-red-50 p-3 rounded-xl border border-red-100">{error}</div>}
                                 <button onClick={handleCalculate} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all ${isDirty ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-default'}`}>
