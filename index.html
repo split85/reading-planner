@@ -97,7 +97,7 @@
                 setError("");
                 const sDate = new Date(draftConfig.startDate);
                 const eDate = new Date(draftConfig.targetDate);
-                if (draftConfig.totalPages <= 0) { setError("Mushaf size must be 1+ pages."); return; }
+                if (draftConfig.totalPages <= 0) { setError("Book size must be 1+ pages."); return; }
                 if (draftConfig.startPage <= 0 || draftConfig.startPage > draftConfig.totalPages) { setError(`Start page must be 1-${draftConfig.totalPages}.`); return; }
                 if (draftConfig.endPage <= 0 || draftConfig.endPage > draftConfig.totalPages) { setError(`End page must be 1-${draftConfig.totalPages}.`); return; }
                 if (eDate <= sDate) { setError("End date must be after start."); return; }
@@ -111,17 +111,17 @@
                 endD.setHours(0, 0, 0, 0);
                 const diffTime = endD.getTime() - startD.getTime();
                 const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-                const totalMushaf = activeConfig.totalPages;
+                const totalPg = activeConfig.totalPages;
                 const sPage = activeConfig.startPage;
                 const ePage = activeConfig.endPage;
-                let pagesToRead = (ePage >= sPage) ? (ePage - sPage + 1) : (totalMushaf - sPage + 1 + ePage);
+                let pagesToRead = (ePage >= sPage) ? (ePage - sPage + 1) : (totalPg - sPage + 1 + ePage);
                 const rate = pagesToRead / diffDays;
                 const list = [];
                 for (let i = 1; i <= diffDays; i++) {
                     const dateLabel = new Date(startD);
                     dateLabel.setDate(startD.getDate() + i);
                     const pageOffset = Math.round(rate * i) - 1;
-                    let targetPage = ((sPage + pageOffset - 1) % totalMushaf) + 1;
+                    let targetPage = ((sPage + pageOffset - 1) % totalPg) + 1;
                     list.push({ id: dateLabel.toISOString().split('T')[0], date: dateLabel.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), target: targetPage });
                 }
                 return { list, days: diffDays, rate };
@@ -171,7 +171,7 @@
                             
                             <div className="space-y-4">
                                 <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Mushaf Total Pages</label>
+                                    <label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Total Pages</label>
                                     <input type="number" name="totalPages" value={draftConfig.totalPages} onChange={handleInput} className="bg-slate-50 border border-slate-100 p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 w-full" />
                                 </div>
 
